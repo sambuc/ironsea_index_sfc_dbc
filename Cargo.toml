@@ -1,0 +1,31 @@
+[package]
+name = "ironsea_index_sfc_dbc"
+version = "0.1.0"
+authors = ["EPFL-DIAS", "Lionel Sambuc <lionel.sambuc@epfl.ch>"]
+
+edition = "2018"
+
+description = "Space-filling Curve over dictionnary-based compression, index implementation for the Iron Sea database toolkit."
+homepage = "https://crates.io/crates/ironsea_index_sfc_dbc"
+repository = "https://github.com/epfl-dias/ironsea_index_sfc_dbc"
+readme = "README.md"
+
+keywords = []
+categories = ["database-implementations", "data-structures"]
+
+license = "MIT"
+#license-file = "LICENSE"
+
+include = ["Cargo.toml", "README.md", "LICENSE", "ACKNOWLEDGEMENTS", "src/**/*.rs"]
+
+[dependencies]
+ironsea_index = "^0.1"
+ironsea_table = "^0.1"
+ironsea_store = "^0.1"
+
+arrayref = "^0.3"
+log = { version = "^0.4", features = ["max_level_trace", "release_max_level_info"] }
+
+serde = "^1.0"
+serde_derive = "^1.0"
+bincode = "^1.1"
