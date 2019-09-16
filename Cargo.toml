@@ -24,7 +24,8 @@ ironsea_table = "^0.1"
 ironsea_store = "^0.1"
 
 arrayref = "^0.3"
-log = { version = "^0.4", features = ["max_level_trace", "release_max_level_info"] }
+#log = { version = "^0.4", features = ["max_level_trace", "release_max_level_info"] }
+log = { version = "^0.4", features = ["max_level_trace", "release_max_level_trace"] }
 
 serde = "^1.0"
 serde_derive = "^1.0"
