@@ -34,9 +34,9 @@ struct Limit<V> {
 }
 
 #[derive(Debug)]
-struct Limits<V> {
-    start: Limit<V>,
-    end: Limit<V>,
+struct Limits<'a, V> {
+    start: Limit<&'a V>,
+    end: Limit<&'a V>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -187,9 +187,9 @@ where
 
     // Rebuild a specific record
     fn get_record(&self, code: SFCCode, entry: &SFCRecord<F>) -> Result<R, String> {
-        let position = self.position(code, &entry.offsets)?;
+        let position = &self.position(code, &entry.offsets)?;
 
-        Ok(R::build(&position, &entry.fields))
+        Ok(R::build(position, &entry.fields))
     }
 
     fn limits(&self, start: &K, end: &K) -> Result<Limits<V>, String> {
@@ -290,8 +290,8 @@ where
                         // FIXME: Reduce number of comparison by using the cells boundaries.
                         for k in 0..self.dimensions {
                             select = select
-                                && limits.start.position[k] <= pos[k]
-                                && limits.end.position[k] >= pos[k];
+                                && *limits.start.position[k] <= pos[k]
+                                && *limits.end.position[k] >= pos[k];
                         }
                         if select {
                             match self.get_record(code, &record) {

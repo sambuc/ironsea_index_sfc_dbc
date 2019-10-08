@@ -176,8 +176,8 @@ where
         }
     }
 
-    fn value(&self, cell_id: usize, offset: usize) -> V {
-        self.table[cell_id][offset].clone()
+    fn value(&self, cell_id: usize, offset: usize) -> &V {
+        &self.table[cell_id][offset]
     }
 }
 
@@ -317,7 +317,7 @@ where
         Ok((cells, offsets))
     }
 
-    pub fn value(&self, cells_id: Vec<usize>, offsets: Vec<usize>) -> Result<Vec<V>, String> {
+    pub fn value(&self, cells_id: Vec<usize>, offsets: Vec<usize>) -> Result<Vec<&V>, String> {
         //TODO: Should we check inside each objects, or just assume it is correct and/or rely on the bound checks?
         if self.dimensions != cells_id.len() {
             return Err(format!(
