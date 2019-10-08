@@ -1,4 +1,6 @@
+use std::collections::HashSet;
 use std::fmt::Debug;
+use std::hash::Hash;
 use std::marker;
 use std::ops::Index;
 
@@ -16,7 +18,7 @@ struct CellDictionary<K, V> {
 
 impl<K, V> CellDictionary<K, V>
 where
-    V: Clone + Ord + Debug,
+    V: Clone + Ord + Debug + Hash,
     K: Debug + Index<usize, Output = V>,
 {
     pub fn new<T, R>(table: &T, dimension: usize, cell_bits: usize) -> Self
@@ -25,16 +27,15 @@ where
         R: Record<K> + Debug,
     {
         // 1. Retrieve a list of distinct values for the coordinate `dimension`
-        let mut distinct = vec![];
-        let records = table.get_table();
+        let mut distinct: HashSet<V> = table
+            .get_table()
+            .iter()
+            .map(|&record| record.key()[dimension].clone())
+            .collect();
 
-        for record in records {
-            distinct.push(record.key()[dimension].clone());
-        }
-
-        // 2. Build sorted, distinct lists
+        // 2. Build a sorted list, of distinct elements
+        let mut distinct = distinct.drain().collect::<Vec<_>>();
         distinct.sort_unstable();
-        distinct.dedup();
 
         info!(
             "Number of distinct coordinates on dim[{}]: {}",
@@ -190,7 +191,7 @@ pub struct CellSpace<K, V> {
 
 impl<K, V> CellSpace<K, V>
 where
-    V: Clone + Ord + Debug,
+    V: Clone + Ord + Debug + Hash,
     K: Debug + Index<usize, Output = V>,
 {
     pub fn new<T, R>(table: &T, dimensions: usize, cell_bits: usize) -> Self

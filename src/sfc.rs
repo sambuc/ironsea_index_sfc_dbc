@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::hash::Hash;
 use std::io;
 use std::iter::FromIterator;
 use std::marker;
@@ -71,7 +72,7 @@ impl<T, R, K, V, F> SpaceFillingCurve<T, R, K, V, F>
 where
     T: Table<R>,
     R: Record<K> + RecordFields<F> + RecordBuild<K, F, R> + Debug,
-    V: Clone + Ord + Debug + From<usize>,
+    V: Clone + Debug + From<usize> + Hash + Ord,
     K: Debug + Index<usize, Output = V> + FromIterator<V>,
 {
     //FIXME: Should accept indexing 0 elements, at least not crash!
@@ -239,7 +240,7 @@ where
     T: Table<R>,
     R: Record<K> + RecordFields<F> + RecordBuild<K, F, R> + Debug,
     K: Debug + Index<usize, Output = V> + FromIterator<V>,
-    V: Clone + Debug + Ord + From<usize> + Debug,
+    V: Clone + Debug + From<usize> + Hash + Ord,
 {
     fn find(&self, key: &K) -> Vec<R> {
         let mut values = vec![];
