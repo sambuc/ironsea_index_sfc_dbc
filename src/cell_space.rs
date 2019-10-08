@@ -24,9 +24,6 @@ where
         T: Table<R>,
         R: Record<K> + Debug,
     {
-        // Do not forget to initialise cells[0]
-        let mut cells: Vec<Cell<V>> = vec![vec![]];
-
         // 1. Retrieve a list of distinct values for the coordinate `dimension`
         let mut distinct = vec![];
         let records = table.get_table();
@@ -57,13 +54,16 @@ where
         // result as this is the max number of elements per bucket.
         let max_offset = (distinct.len() / (1 << cell_bits)) + 1;
 
+        // Do not forget to initialise cells[0]
+        let mut cells: Vec<Cell<V>> = Vec::with_capacity(1 << cell_bits);
+
         for coordinate in distinct {
             //trace!("{:?} {:?} {:?} {:?}", dimension, coordinate, cell, count);
 
             if count == max_offset {
                 count = 0;
                 cell += 1;
-                cells.push(vec![]);
+                cells.push(Vec::with_capacity(max_offset));
             }
 
             cells[cell].push(coordinate);
