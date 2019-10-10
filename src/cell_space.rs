@@ -63,14 +63,14 @@ where
         for coordinate in distinct {
             //trace!("{:?} {:?} {:?} {:?}", dimension, coordinate, cell, count);
 
+            cells[cell].push(coordinate);
+            count += 1;
+
             if count == max_offset {
                 count = 0;
                 cell += 1;
                 cells.push(Vec::with_capacity(max_offset));
             }
-
-            cells[cell].push(coordinate);
-            count += 1;
         }
 
         info!(
