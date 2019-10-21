@@ -156,7 +156,10 @@ where
     }
 
     fn last(&self) -> (usize, usize) {
+        assert!(!self.table.is_empty());
         let last_id = self.table.len() - 1;
+
+        assert!(!self.table[last_id].is_empty());
         let last_offset = self.table[last_id].len() - 1;
 
         (last_id, last_offset)
