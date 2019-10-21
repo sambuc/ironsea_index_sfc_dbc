@@ -256,8 +256,8 @@ where
             ));
         }*/
 
-        let mut cells = vec![];
-        let mut offsets = vec![];
+        let mut cells = Vec::with_capacity(self.dimensions);
+        let mut offsets = Vec::with_capacity(self.dimensions);
         for k in 0..self.dimensions {
             match self.coordinates[k].key(&position[k]) {
                 None => {
@@ -289,8 +289,8 @@ where
             ));
         }*/
 
-        let mut cells = vec![];
-        let mut offsets = vec![];
+        let mut cells = Vec::with_capacity(self.dimensions);
+        let mut offsets = Vec::with_capacity(self.dimensions);
         for k in 0..self.dimensions {
             let (id, offset) = self.coordinates[k].key_down(&position[k]);
             cells.push(id);
@@ -313,8 +313,8 @@ where
             ));
         }*/
 
-        let mut cells = vec![];
-        let mut offsets = vec![];
+        let mut cells = Vec::with_capacity(self.dimensions);
+        let mut offsets = Vec::with_capacity(self.dimensions);
         for k in 0..self.dimensions {
             let (id, offset) = self.coordinates[k].key_up(&position[k]);
             cells.push(id);
@@ -345,7 +345,7 @@ where
             ));
         }
 
-        let mut values = vec![];
+        let mut values = Vec::with_capacity(self.dimensions);
         for k in 0..self.dimensions {
             values.push(self.coordinates[k].value(cells_id[k], offsets[k]));
         }
