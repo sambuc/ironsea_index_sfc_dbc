@@ -286,26 +286,55 @@ where
             Ok(limits) => {
                 for idx in limits.start.idx..limits.end.idx {
                     let code = self.index[idx].code;
-                    for record in &self.index[idx].records {
-                        let mut select = true;
-                        let pos = match self.position(code, &record.offsets) {
-                            Err(e) => {
-                                error!("{}", e);
-                                continue;
-                            }
-                            Ok(p) => p,
-                        };
 
-                        // FIXME: Reduce number of comparison by using the cells boundaries.
-                        for k in 0..self.dimensions {
-                            select = select
-                                && *limits.start.position[k] <= pos[k]
-                                && *limits.end.position[k] >= pos[k];
+                    let first = match self.value(code, &self.index[idx].records[0].offsets) {
+                        Err(e) => {
+                            error!("Cannot retrieve first value of cell: {}", e);
+                            continue;
                         }
-                        if select {
+                        Ok(r) => r,
+                    };
+
+                    let (cell_ids, last_offsets) = self.last();
+                    let last = match self.space.value(cell_ids, last_offsets) {
+                        Err(e) => {
+                            error!("Cannot retrieve last value of cell: {}", e);
+                            continue;
+                        }
+                        Ok(r) => r,
+                    };
+
+                    // Check first & last point of the cell, if both are fully
+                    // in the bounding box, then all the points of the cell will
+                    // be.
+                    if limits.start.position <= first
+                        && first <= limits.end.position
+                        && limits.start.position <= last
+                        && last <= limits.end.position
+                    {
+                        for record in &self.index[idx].records {
                             match self.get_record(code, &record) {
                                 Err(e) => error!("{}", e),
                                 Ok(r) => values.push(r),
+                            }
+                        }
+                    } else {
+                        // We have points which are outside of the bounding box,
+                        // so check every points one by one.
+                        for record in &self.index[idx].records {
+                            let pos = match self.value(code, &record.offsets) {
+                                Err(e) => {
+                                    error!("{}", e);
+                                    continue;
+                                }
+                                Ok(r) => r,
+                            };
+
+                            if limits.start.position <= pos && pos <= limits.end.position {
+                                match self.get_record(code, &record) {
+                                    Err(e) => error!("{}", e),
+                                    Ok(r) => values.push(r),
+                                }
                             }
                         }
                     }
@@ -317,40 +346,6 @@ where
         values
     }
 }
-// Rough check, based on per-dimension cell Ids.
-/*
-            // If the cell_ids are between ]pos_start and pos_end[, then the value is within the range,
-            // If the cell_ids are outside [pos_start, pos_end], then the value is out, stop checking
-            // Else, check the offsets of each entry to be within [off_start, off_end], then the value is within the range.
-            let mut rough_in = true;
-            for k in 0..self.dimensions {
-                if !(cells[k] > start_limits.cells[k] && cells[k] < end_limits.cells[k]) {
-                    rough_in = false;
-                }
-            }
-
-            if rough_in {
-                // This is a cell well within the volume, so all points are a match, add all points,
-                // go to next cell.
-                for entry in entries {
-                    values.push(self.get_element(code, entry))
-                }
-
-                continue;
-            }
-
-            let mut rough_out = false;
-            for k in 0..self.dimensions {
-                if cells[k] < start_limits.cells[k] || cells[k] > end_limits.cells[k] {
-                    rough_out = false;
-                }
-            }
-
-            // If rough is not true, then we have nothing to double check.
-            if rough_out {
-                continue;
-            }
-*/
 
 impl<T, R, K, V, F> Store for SpaceFillingCurve<T, R, K, V, F>
 where
