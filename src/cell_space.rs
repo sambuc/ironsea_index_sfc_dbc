@@ -223,27 +223,18 @@ where
         space
     }
 
-    /*
-        pub fn cells_id(&self, position: &Vec<V>) -> Result<Vec<Option<usize>>, String> {
-            trace!("cells_id: position {:?}", position);
-            //TODO: Should we check inside each objects, or just assume it is correct and/or rely on the bound checks?
-            if self.dimensions != position.len() {
-                return Err(format!(
-                    "Incorrect number of dimensions, expected {}, got {} for {:?}",
-                    self.dimensions,
-                    position.len(),
-                    position
-                ));
-            }
-
-            let mut cells = vec![];
-            for k in 0..self.dimensions {
-                cells.push(self.coordinates[k].cell_id(&position[k]));
-            }
-            trace!("cells_id: cells {:?}", cells);
-            Ok(cells)
+    pub fn last(&self) -> (Vec<usize>, Vec<usize>) {
+        let mut cells = Vec::with_capacity(self.dimensions);
+        let mut offsets = Vec::with_capacity(self.dimensions);
+        for k in 0..self.dimensions {
+            let (cell_id, offset) = self.coordinates[k].last();
+            cells.push(cell_id);
+            offsets.push(offset);
         }
-    */
+
+        (cells, offsets)
+    }
+
     pub fn key(&self, position: &K) -> Result<(Vec<usize>, Vec<usize>), String> {
         //TODO: Should we check inside each objects, or just assume it is correct and/or rely on the bound checks?
         /* This impose to require ExactSizeIterator, which is not implemented on Vec, and can't be in any easy way.

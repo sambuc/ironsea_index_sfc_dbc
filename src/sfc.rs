@@ -172,16 +172,24 @@ where
         self.morton.encode(&t)
     }
 
-    // Build coordinate values from encoded value
-    fn position(&self, code: SFCCode, offsets: &[SFCOffset]) -> Result<K, String> {
-        let position = self.space.value(
+    fn last(&self) -> (Vec<usize>, Vec<usize>) {
+        self.space.last()
+    }
+
+    fn value(&self, code: SFCCode, offsets: &[SFCOffset]) -> Result<Vec<&V>, String> {
+        Ok(self.space.value(
             self.morton
                 .decode(code)
                 .iter()
                 .map(|e| *e as usize)
                 .collect(),
             offsets.iter().map(|e| *e as usize).collect(),
-        )?;
+        )?)
+    }
+
+    // Build coordinate values from encoded value
+    fn position(&self, code: SFCCode, offsets: &[SFCOffset]) -> Result<K, String> {
+        let position = self.value(code, offsets)?;
 
         Ok(position.iter().map(|i| (*i).clone()).collect())
     }
