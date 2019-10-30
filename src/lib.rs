@@ -12,6 +12,5 @@ mod morton;
 mod sfc;
 
 pub use sfc::Record;
-pub use sfc::RecordBuild;
 pub use sfc::RecordFields;
 pub use sfc::SpaceFillingCurve as IndexOwned;

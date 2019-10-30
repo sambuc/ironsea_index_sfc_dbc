@@ -1,27 +1,27 @@
+#![allow(clippy::type_repetition_in_bounds)]
+
+use std::cmp::PartialEq;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::io;
 use std::iter::FromIterator;
-use std::marker;
 use std::ops::Index;
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-pub use ironsea_index::IndexedOwned;
+pub use ironsea_index::IndexedDestructured;
 pub use ironsea_index::Record;
-pub use ironsea_index::RecordBuild;
 pub use ironsea_index::RecordFields;
 use ironsea_store::Load;
 use ironsea_store::Store;
-use ironsea_table::Table;
 
 use super::cell_space::CellSpace;
 use super::morton::MortonCode;
 use super::morton::MortonEncoder;
 use super::morton::MortonValue;
 
-type SFCCode = u32;
+type SFCCode = MortonCode;
 type SFCOffset = u32;
 
 //FIXME: Remove the need for a constant, how can we make it type-checked instead?
@@ -54,44 +54,44 @@ struct SFCCell<F> {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct SpaceFillingCurve<T, R, K, V, F>
+pub struct SpaceFillingCurve<F, K, V>
 where
-    T: Table<R>,
-    R: Record<K> + RecordFields<F> + RecordBuild<K, F, R> + Debug,
-    //    K: Debug + ExactSizeIterator + Index<usize, Output = V> + FromIterator<V>,
-    V: Clone + Ord + Debug + From<usize>,
+    F: PartialEq,
+    K: Debug + FromIterator<V> + Index<usize, Output = V>,
+    V: Clone + Debug + From<usize> + Ord,
 {
     dimensions: usize,
     morton: MortonEncoder,
     space: CellSpace<K, V>,
     index: Vec<SFCCell<F>>,
-    _marker: marker::PhantomData<(T, R)>,
 }
 
-impl<T, R, K, V, F> SpaceFillingCurve<T, R, K, V, F>
+impl<F, K, V> SpaceFillingCurve<F, K, V>
 where
-    T: Table<R>,
-    R: Record<K> + RecordFields<F> + RecordBuild<K, F, R> + Debug,
+    F: PartialEq,
+    K: Debug + FromIterator<V> + Index<usize, Output = V>,
     V: Clone + Debug + From<usize> + Hash + Ord,
-    K: Debug + Index<usize, Output = V> + FromIterator<V>,
 {
     //FIXME: Should accept indexing 0 elements, at least not crash!
-    pub fn new(table: &T, dimensions: usize, cell_bits: usize) -> Self {
+    pub fn new<I, R>(iter: I, dimensions: usize, cell_bits: usize) -> Self
+    where
+        I: Clone + Iterator<Item = R>,
+        R: Debug + Record<K> + RecordFields<F>,
+    {
         // 1. build the dictionnary space, called here CellSpace, as well as
         // initialize the morton encoder used to project the multi-dimensional
         // coordinates into a single dimension.
         let mut index = SpaceFillingCurve {
             dimensions,
             morton: MortonEncoder::new(dimensions, cell_bits),
-            space: CellSpace::new(table, dimensions, cell_bits),
+            space: CellSpace::new(iter.clone(), dimensions, cell_bits),
             index: vec![],
-            _marker: marker::PhantomData,
         };
 
         // 2. Build a flat table of (code, offset, entries)
         let mut flat_table = vec![];
-
-        for record in table.get_table() {
+        let (nb_records, _) = iter.size_hint();
+        for record in iter.into_iter() {
             let position = record.key();
             match index.space.key(&position) {
                 Ok((cell_ids, offsets)) => match index.encode(&cell_ids) {
@@ -111,10 +111,7 @@ where
             }
         }
 
-        debug!(
-            "Processed {:#?} records into the index",
-            table.get_table().len()
-        );
+        debug!("Processed {:#?} records into the index", nb_records);
 
         // 5. Sort by SFCcode
         flat_table.sort_unstable_by(|a, b| a.0.cmp(&b.0));
@@ -143,16 +140,13 @@ where
         index
     }
 
-    pub fn find_by_value(&self, value: &F) -> Vec<R>
-    where
-        F: std::cmp::PartialEq,
-    {
+    pub fn find_by_value(&self, value: &F) -> Vec<K> {
         let mut results = vec![];
         for cell in &self.index {
             for record in &cell.records {
                 if &record.fields == value {
-                    if let Ok(r) = self.get_record(cell.code, &record) {
-                        results.push(r);
+                    if let Ok(key) = self.position(cell.code, &record.offsets) {
+                        results.push(key);
                     }
                 }
             }
@@ -192,13 +186,6 @@ where
         let position = self.value(code, offsets)?;
 
         Ok(position.iter().map(|i| (*i).clone()).collect())
-    }
-
-    // Rebuild a specific record
-    fn get_record(&self, code: SFCCode, entry: &SFCRecord<F>) -> Result<R, String> {
-        let position = &self.position(code, &entry.offsets)?;
-
-        Ok(R::build(position, &entry.fields))
     }
 
     fn limits(&self, start: &K, end: &K) -> Result<Limits<V>, String> {
@@ -243,14 +230,13 @@ where
     }
 }
 
-impl<T, R, K, V, F> IndexedOwned<T, R, K> for SpaceFillingCurve<T, R, K, V, F>
+impl<F, K, V> IndexedDestructured<F, K> for SpaceFillingCurve<F, K, V>
 where
-    T: Table<R>,
-    R: Record<K> + RecordFields<F> + RecordBuild<K, F, R> + Debug,
-    K: Debug + Index<usize, Output = V> + FromIterator<V>,
+    F: PartialEq,
+    K: Debug + FromIterator<V> + Index<usize, Output = V>,
     V: Clone + Debug + From<usize> + Hash + Ord,
 {
-    fn find(&self, key: &K) -> Vec<R> {
+    fn find(&self, key: &K) -> Vec<&F> {
         let mut values = vec![];
 
         if let Ok((cell_ids, offsets)) = self.space.key(key) {
@@ -265,10 +251,7 @@ where
                             }
 
                             if select {
-                                match self.get_record(code, record) {
-                                    Err(e) => error!("{}", e),
-                                    Ok(r) => values.push(r),
-                                }
+                                values.push(&record.fields);
                             }
                         }
                     }
@@ -279,7 +262,7 @@ where
         values
     }
 
-    fn find_range(&self, start: &K, end: &K) -> Vec<R> {
+    fn find_range(&self, start: &K, end: &K) -> Vec<(K, &F)> {
         let mut values = vec![];
 
         match self.limits(start, end) {
@@ -313,9 +296,8 @@ where
                         && last <= limits.end.position
                     {
                         for record in &self.index[idx].records {
-                            match self.get_record(code, &record) {
-                                Err(e) => error!("{}", e),
-                                Ok(r) => values.push(r),
+                            if let Ok(key) = self.position(code, &record.offsets) {
+                                values.push((key, &record.fields));
                             }
                         }
                     } else {
@@ -331,9 +313,8 @@ where
                             };
 
                             if limits.start.position <= pos && pos <= limits.end.position {
-                                match self.get_record(code, &record) {
-                                    Err(e) => error!("{}", e),
-                                    Ok(r) => values.push(r),
+                                if let Ok(key) = self.position(code, &record.offsets) {
+                                    values.push((key, &record.fields));
                                 }
                             }
                         }
@@ -347,14 +328,11 @@ where
     }
 }
 
-impl<T, R, K, V, F> Store for SpaceFillingCurve<T, R, K, V, F>
+impl<F, K, V> Store for SpaceFillingCurve<F, K, V>
 where
-    T: Table<R>,
-    R: Record<K> + RecordFields<F> + RecordBuild<K, F, R> + Debug,
-    //    K: Debug + ExactSizeIterator + Index<usize, Output = V> + FromIterator<V>,
-    K: Serialize,
-    V: Clone + Ord + Debug + From<usize> + Serialize,
-    F: Serialize,
+    F: PartialEq + Serialize,
+    K: Debug + Serialize + FromIterator<V> + Index<usize, Output = V>,
+    V: Clone + Debug + From<usize> + Ord + Serialize,
 {
     fn store<W>(&mut self, writer: W) -> io::Result<()>
     where
@@ -367,13 +345,11 @@ where
     }
 }
 
-impl<T, R, K, V, F> Load for SpaceFillingCurve<T, R, K, V, F>
+impl<F, K, V> Load for SpaceFillingCurve<F, K, V>
 where
-    T: Table<R>,
-    R: Record<K> + RecordFields<F> + RecordBuild<K, F, R> + Debug,
-    K: DeserializeOwned,
-    V: Clone + Ord + Debug + From<usize> + DeserializeOwned,
-    F: DeserializeOwned,
+    F: PartialEq + DeserializeOwned,
+    K: Debug + DeserializeOwned + FromIterator<V> + Index<usize, Output = V>,
+    V: Clone + Debug + DeserializeOwned + From<usize> + Ord,
 {
     fn load<Re: io::Read>(reader: Re) -> io::Result<Self> {
         match bincode::deserialize_from(reader) {

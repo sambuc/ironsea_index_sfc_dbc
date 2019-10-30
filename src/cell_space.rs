@@ -5,7 +5,6 @@ use std::marker;
 use std::ops::Index;
 
 use ironsea_index::Record;
-use ironsea_table::Table;
 
 type Cell<T> = Vec<T>;
 
@@ -18,20 +17,16 @@ struct CellDictionary<K, V> {
 
 impl<K, V> CellDictionary<K, V>
 where
-    V: Clone + Ord + Debug + Hash,
     K: Debug + Index<usize, Output = V>,
+    V: Clone + Debug + Hash + Ord,
 {
-    pub fn new<T, R>(table: &T, dimension: usize, cell_bits: usize) -> Self
+    pub fn new<I, R>(iter: I, dimension: usize, cell_bits: usize) -> Self
     where
-        T: Table<R>,
-        R: Record<K> + Debug,
+        I: Iterator<Item = R>,
+        R: Debug + Record<K>,
     {
         // 1. Retrieve a list of distinct values for the coordinate `dimension`
-        let mut distinct: HashSet<V> = table
-            .get_table()
-            .iter()
-            .map(|&record| record.key()[dimension].clone())
-            .collect();
+        let mut distinct: HashSet<V> = iter.map(|record| record.key()[dimension].clone()).collect();
 
         // 2. Build a sorted list, of distinct elements
         let mut distinct = distinct.drain().collect::<Vec<_>>();
@@ -96,10 +91,7 @@ where
         &self.table
     }
 
-    fn cell_id(&self, position: &V) -> Option<usize>
-    where
-        V: Clone + Ord + Debug,
-    {
+    fn cell_id(&self, position: &V) -> Option<usize> {
         let mut id = 0;
         // If the last value of the current cell is >= than the value, then
         // the value is stored in the cell.
@@ -197,14 +189,13 @@ pub struct CellSpace<K, V> {
 
 impl<K, V> CellSpace<K, V>
 where
-    V: Clone + Ord + Debug + Hash,
     K: Debug + Index<usize, Output = V>,
+    V: Clone + Debug + Hash + Ord,
 {
-    pub fn new<T, R>(table: &T, dimensions: usize, cell_bits: usize) -> Self
+    pub fn new<I, R>(iter: I, dimensions: usize, cell_bits: usize) -> Self
     where
-        T: Table<R>,
-        R: Record<K> + Debug,
-        V: Clone + Ord + Debug,
+        I: Clone + Iterator<Item = R>,
+        R: Debug + Record<K>,
     {
         let mut space = CellSpace {
             dimensions,
@@ -214,7 +205,7 @@ where
 
         // FIXME: Add check to ensure all positions have the required number of dimensions.
         for k in 0..dimensions {
-            let dic = CellDictionary::new(table, k, cell_bits);
+            let dic = CellDictionary::new(iter.clone(), k, cell_bits);
             let max = dic.max_offset();
             space.coordinates.push(dic);
             space.coordinates_max_offsets.push(max);

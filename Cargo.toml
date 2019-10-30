@@ -20,7 +20,6 @@ include = ["Cargo.toml", "README.md", "LICENSE", "ACKNOWLEDGEMENTS", "src/**/*.r
 
 [dependencies]
 ironsea_index = "^0.1"
-ironsea_table = "^0.1"
 ironsea_store = "^0.1"
 
 arrayref = "^0.3"
