@@ -156,7 +156,6 @@ where
     }
 
     // Map the cell_ids of a point to its SFCcode
-    #[inline]
     fn encode(&self, cell_ids: &[usize]) -> Result<SFCCode, String> {
         let mut t = vec![];
         for v in cell_ids.iter() {
