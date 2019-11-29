@@ -12,7 +12,7 @@ type Cell<T> = Vec<T>;
 struct CellDictionary<K, V> {
     table: Vec<Cell<V>>,
     max_offset: usize,
-    _marker: marker::PhantomData<(K)>,
+    _marker: marker::PhantomData<K>,
 }
 
 impl<K, V> CellDictionary<K, V>
