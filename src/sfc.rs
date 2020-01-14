@@ -7,14 +7,14 @@ use std::io;
 use std::iter::FromIterator;
 use std::ops::Index;
 
-use serde::de::DeserializeOwned;
-use serde::Serialize;
-
 pub use ironsea_index::IndexedDestructured;
 pub use ironsea_index::Record;
 pub use ironsea_index::RecordFields;
 use ironsea_store::Load;
 use ironsea_store::Store;
+use serde::de::DeserializeOwned;
+use serde::Deserialize;
+use serde::Serialize;
 
 use super::cell_space::CellSpace;
 use super::morton::MortonCode;

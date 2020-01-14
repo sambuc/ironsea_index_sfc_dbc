@@ -5,6 +5,8 @@ use std::marker;
 use std::ops::Index;
 
 use ironsea_index::Record;
+use serde::Deserialize;
+use serde::Serialize;
 
 type Cell<T> = Vec<T>;
 
