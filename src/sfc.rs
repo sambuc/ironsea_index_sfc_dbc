@@ -3,16 +3,16 @@
 use std::cmp::PartialEq;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::io;
+//use std::io;
 use std::iter::FromIterator;
 use std::ops::Index;
 
 pub use ironsea_index::IndexedDestructured;
 pub use ironsea_index::Record;
 pub use ironsea_index::RecordFields;
-use ironsea_store::Load;
-use ironsea_store::Store;
-use serde::de::DeserializeOwned;
+//use ironsea_store::Load;
+//use ironsea_store::Store;
+//use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -327,6 +327,7 @@ where
     }
 }
 
+/*
 impl<F, K, V> Store for SpaceFillingCurve<F, K, V>
 where
     F: PartialEq + Serialize,
@@ -365,3 +366,4 @@ where
         }
     }
 }
+*/
