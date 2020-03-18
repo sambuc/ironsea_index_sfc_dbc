@@ -53,6 +53,9 @@ struct SFCCell<F> {
     records: Vec<SFCRecord<F>>,
 }
 
+/// Space Filling Curve-based index.
+///
+/// This structure retains the state of the index.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct SpaceFillingCurve<F, K, V>
 where
@@ -72,6 +75,15 @@ where
     K: Debug + FromIterator<V> + Index<usize, Output = V>,
     V: Clone + Debug + From<usize> + Hash + Ord,
 {
+    /// Creates a new Index from the provided iterator.
+    ///
+    /// * `dimensions`: The number of dimensions of the space, a.k.a the
+    ///                 length of the vector representing a single
+    ///                 position.
+    /// * `cell_bits`: The number of bits to reserve for the grid we
+    ///                build on top of the coordinate dictionaries.
+    ///                We generate 2^`cell_bits` Cells per dimension.
+    ///
     //FIXME: Should accept indexing 0 elements, at least not crash!
     pub fn new<I, R>(iter: I, dimensions: usize, cell_bits: usize) -> Self
     where
@@ -140,6 +152,8 @@ where
         index
     }
 
+    /// Returns a vector of keys which have stored values in the index
+    /// equal to `value`.
     pub fn find_by_value(&self, value: &F) -> Vec<K> {
         let mut results = vec![];
         for cell in &self.index {
