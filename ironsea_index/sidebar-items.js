@@ -1,0 +1,1 @@
+initSidebarItems({"trait":[["Indexed","Methods provided by indices."],["IndexedDestructured","Methods provided by destructuring indices."],["Record","Record behavior used by Indexed implementations."],["RecordFields","Record behavior used by IndexedDestructured implementations."]]});

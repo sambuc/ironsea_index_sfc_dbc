@@ -1,0 +1,14 @@
+var ALIASES = {};
+ALIASES["arrayref"] = {};
+ALIASES["bincode"] = {};
+ALIASES["byteorder"] = {};
+ALIASES["cfg_if"] = {};
+ALIASES["ironsea_index"] = {};
+ALIASES["ironsea_index_sfc_dbc"] = {};
+ALIASES["log"] = {};
+ALIASES["proc_macro2"] = {};
+ALIASES["quote"] = {};
+ALIASES["serde"] = {};
+ALIASES["serde_derive"] = {};
+ALIASES["syn"] = {};
+ALIASES["unicode_xid"] = {};

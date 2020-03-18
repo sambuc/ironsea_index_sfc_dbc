@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["IndexOwned","Space Filling Curve-based index."]],"trait":[["Record","Record behavior used by Indexed implementations."],["RecordFields","Record behavior used by IndexedDestructured implementations."]]});
