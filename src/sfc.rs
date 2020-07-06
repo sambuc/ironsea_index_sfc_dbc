@@ -28,13 +28,13 @@ type SFCOffset = u32;
 //       type-num crate?
 const MAX_K: usize = 3;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct Limit<V> {
     idx: usize,
     position: Vec<V>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct Limits<'a, V> {
     start: Limit<&'a V>,
     end: Limit<&'a V>,
@@ -154,19 +154,25 @@ where
 
     /// Returns a vector of keys which have stored values in the index
     /// equal to `value`.
-    pub fn find_by_value(&self, value: &F) -> Vec<K> {
-        let mut results = vec![];
-        for cell in &self.index {
-            for record in &cell.records {
-                if &record.fields == value {
-                    if let Ok(key) = self.position(cell.code, &record.offsets) {
-                        results.push(key);
-                    }
-                }
-            }
-        }
-
-        results
+    pub fn find_by_value<'s>(&'s self, value: &'s F) -> Box<dyn Iterator<Item = K> + 's> {
+        Box::new(
+            self.index
+                .iter()
+                .map(|cell| (cell, cell.records.iter()))
+                .flat_map(move |(cell, records)| {
+                    records.filter_map(move |record| {
+                        if &record.fields == value {
+                            if let Ok(key) = self.position(cell.code, &record.offsets) {
+                                Some(key)
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    })
+                }),
+        )
     }
 
     // Map the cell_ids of a point to its SFCcode
@@ -249,95 +255,101 @@ where
     K: Debug + FromIterator<V> + Index<usize, Output = V>,
     V: Clone + Debug + From<usize> + Hash + Ord,
 {
-    fn find(&self, key: &K) -> Vec<&F> {
-        let mut values = vec![];
-
+    fn find<'i>(&'i self, key: &K) -> Box<dyn Iterator<Item = &F> + 'i> {
         if let Ok((cell_ids, offsets)) = self.space.key(key) {
             match self.encode(&cell_ids) {
                 Err(e) => error!("{}", e),
                 Ok(code) => {
                     if let Ok(cell) = self.index.binary_search_by(|a| a.code.cmp(&code)) {
-                        for record in &self.index[cell].records {
-                            let mut select = true;
-                            for (k, o) in offsets.iter().enumerate().take(self.dimensions) {
-                                select &= record.offsets[k] == (*o as SFCOffset);
-                            }
+                        return Box::new(self.index[cell].records.iter().filter_map(
+                            move |record| {
+                                let mut select = true;
+                                for (k, o) in offsets.iter().enumerate().take(self.dimensions) {
+                                    select &= record.offsets[k] == (*o as SFCOffset);
+                                }
 
-                            if select {
-                                values.push(&record.fields);
-                            }
-                        }
+                                if select {
+                                    Some(&record.fields)
+                                } else {
+                                    None
+                                }
+                            },
+                        ));
                     }
                 }
             }
         }
 
-        values
+        Box::new(Vec::with_capacity(0).into_iter())
     }
 
-    fn find_range(&self, start: &K, end: &K) -> Vec<(K, &F)> {
-        let mut values = vec![];
-
+    fn find_range<'i>(&'i self, start: &K, end: &K) -> Box<dyn Iterator<Item = (K, &F)> + 'i> {
         match self.limits(start, end) {
             Ok(limits) => {
-                for idx in limits.start.idx..limits.end.idx {
-                    let code = self.index[idx].code;
-
-                    let first = match self.value(code, &self.index[idx].records[0].offsets) {
-                        Err(e) => {
-                            error!("Cannot retrieve first value of cell: {}", e);
-                            continue;
+                let iter = (limits.start.idx..limits.end.idx)
+                    .filter_map(move |idx| {
+                        match self.value(self.index[idx].code, &self.index[idx].records[0].offsets)
+                        {
+                            Err(_) => None,
+                            Ok(first) => Some((idx, first)),
                         }
-                        Ok(r) => r,
-                    };
-
-                    let (cell_ids, last_offsets) = self.last();
-                    let last = match self.space.value(cell_ids, last_offsets) {
-                        Err(e) => {
-                            error!("Cannot retrieve last value of cell: {}", e);
-                            continue;
+                    })
+                    .filter_map(move |(idx, first)| {
+                        let (cell_ids, last_offsets) = self.last();
+                        match self.space.value(cell_ids, last_offsets) {
+                            Err(_) => None,
+                            Ok(last) => Some((idx, first, last)),
                         }
-                        Ok(r) => r,
-                    };
-
-                    // Check first & last point of the cell, if both are fully
-                    // in the bounding box, then all the points of the cell will
-                    // be.
-                    if limits.start.position <= first
-                        && first <= limits.end.position
-                        && limits.start.position <= last
-                        && last <= limits.end.position
-                    {
-                        for record in &self.index[idx].records {
-                            if let Ok(key) = self.position(code, &record.offsets) {
-                                values.push((key, &record.fields));
-                            }
-                        }
-                    } else {
-                        // We have points which are outside of the bounding box,
-                        // so check every points one by one.
-                        for record in &self.index[idx].records {
-                            let pos = match self.value(code, &record.offsets) {
-                                Err(e) => {
-                                    error!("{}", e);
-                                    continue;
-                                }
-                                Ok(r) => r,
-                            };
-
-                            if limits.start.position <= pos && pos <= limits.end.position {
+                    })
+                    .map(move |(idx, first, last)| {
+                        // Check first & last point of the cell, if both are fully
+                        // in the bounding box, then all the points of the cell will
+                        // be.
+                        let limits = limits.clone();
+                        let b: Box<dyn Iterator<Item = _>> = if limits.start.position <= first
+                            && first <= limits.end.position
+                            && limits.start.position <= last
+                            && last <= limits.end.position
+                        {
+                            Box::new(self.index[idx].records.iter().filter_map(move |record| {
+                                let code = self.index[idx].code;
                                 if let Ok(key) = self.position(code, &record.offsets) {
-                                    values.push((key, &record.fields));
+                                    Some((key, &record.fields))
+                                } else {
+                                    None
                                 }
-                            }
-                        }
-                    }
-                }
-            }
-            Err(e) => error!("find_range: limits failed: {}", e),
-        };
+                            }))
+                        } else {
+                            // We have points which are outside of the bounding box,
+                            // so check every points one by one.
+                            Box::new(self.index[idx].records.iter().filter_map(move |record| {
+                                let code = self.index[idx].code;
+                                if let Ok(pos) = self.value(code, &record.offsets) {
+                                    if limits.start.position <= pos && pos <= limits.end.position {
+                                        if let Ok(key) = self.position(code, &record.offsets) {
+                                            Some((key, &record.fields))
+                                        } else {
+                                            None
+                                        }
+                                    } else {
+                                        None
+                                    }
+                                } else {
+                                    None
+                                }
+                            }))
+                        };
 
-        values
+                        b
+                    })
+                    .flatten();
+                Box::new(iter)
+            }
+            Err(e) => {
+                error!("find_range: limits failed: {}", e);
+                Box::new(Vec::with_capacity(0).into_iter())
+            }
+        }
     }
 }
 
