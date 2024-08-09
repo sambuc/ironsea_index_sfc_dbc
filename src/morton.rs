@@ -171,7 +171,7 @@ impl<'de> Deserialize<'de> for MortonEncoder {
         enum Field {
             CellBits,
             Dimensions,
-        };
+        }
 
         impl<'de> Deserialize<'de> for Field {
             fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>

@@ -190,14 +190,14 @@ where
     }
 
     fn value(&self, code: SFCCode, offsets: &[SFCOffset]) -> Result<Vec<&V>, String> {
-        Ok(self.space.value(
+        self.space.value(
             self.morton
                 .decode(code)
                 .iter()
                 .map(|e| *e as usize)
                 .collect(),
             offsets.iter().map(|e| *e as usize).collect(),
-        )?)
+        )
     }
 
     // Build coordinate values from encoded value
@@ -301,7 +301,7 @@ where
                             Ok(last) => Some((idx, first, last)),
                         }
                     })
-                    .map(move |(idx, first, last)| {
+                    .flat_map(move |(idx, first, last)| {
                         // Check first & last point of the cell, if both are fully
                         // in the bounding box, then all the points of the cell will
                         // be.
@@ -341,8 +341,7 @@ where
                         };
 
                         b
-                    })
-                    .flatten();
+                    });
                 Box::new(iter)
             }
             Err(e) => {
