@@ -184,14 +184,14 @@ where
     }
 
     fn value(&self, code: SFCCode, offsets: &[SFCOffset]) -> Result<Vec<&V>, String> {
-        Ok(self.space.value(
+        self.space.value(
             self.morton
                 .decode(code)
                 .iter()
                 .map(|e| *e as usize)
                 .collect(),
             offsets.iter().map(|e| *e as usize).collect(),
-        )?)
+        )
     }
 
     // Build coordinate values from encoded value
